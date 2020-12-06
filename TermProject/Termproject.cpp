@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include<fstream>
 #include<iostream>
 #include<string>
@@ -29,7 +31,7 @@ public:
 	void doAction() override {
 		// 허용 페이지가 넘을때 ? 예외처리 필요 
 		if (lines.size() / 20 < pageNumber ) {
-			consolMessage = "error: page out of inbound";
+			consolMessage = "This is the last page!";
 			return;
 		}
 		++pageNumber;
@@ -41,7 +43,7 @@ public:
 	void doAction() override {
 		// 페이지 1보다 작을때 ? 예외처리 필요 
 		if (pageNumber - 1 < 1) {
-			consolMessage = "error: page out of inbound";
+			consolMessage = "This is the first page!";
 			return;
 		}
 		--pageNumber;
@@ -51,31 +53,45 @@ public:
 class Insert : public Action {
 public:
 	void i(int a, int b, string s) {
-		row = a;
+		line = a;	// 페이지 번호에 맞게 다시 구현
 		col = b;
 		word = s;
-		doAction();
 	}
 	void doAction() override{
+		string temp = lines[line].buf;
+		
+		temp.insert(col, word+" ");
+		strcpy(lines[line].buf,temp.c_str());
+
+		// 문장 삽입 후 75 바이트 크기를 넘기면 ? 
 		
 	}
 public:
-	int row, col;
+	int line, col;
 	string word;
 };
 
 class Delete : public Action {
 public:
 	void d(int a, int b) {
-		row = a;
+		line = a;	// 페이지에 맞는 번호로 다시 구현
 		col = b;
 	}
-	void doAction() {
+	void doAction() override {
+		string deletedWord;
+		string temp = lines[line].buf;
 
+		for (int i = col; lines[line].buf[i] != ' '; i++) {
+			deletedWord += lines[line].buf[i];
+		}
+
+		temp.erase(col, col + deletedWord.length());
+		strcpy(lines[line].buf, temp.c_str());
 	}
 
 public:
-	int row, col;
+	int line, col;
+	
 };
 
 class Change : public Action {
