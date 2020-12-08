@@ -16,6 +16,8 @@ struct Buffer {
 	char buf[152] = "";
 };
 
+
+
 vector<Buffer> lines;
 int pageNumber = 1;
 int searchedLine = -1;
@@ -83,14 +85,11 @@ public:
 			word.clear();
 			sentance.clear();
 		}
-		
-		temp.push_back(buffer);
 
-		
+		temp.push_back(buffer);
 
 		lines.clear();
 		lines.assign(temp.begin(), temp.end());
-
 	}
 };
 
@@ -121,6 +120,10 @@ public:
 class Insert : public Action {
 public:
 	void i(int a, int b, string s) {
+		if (a > 20) {
+			consolMessage = "error: line out of range ( invalid line : 1<= line <= 20)";
+			throw 0;
+		}
 		line = (pageNumber - 1) * 20 + a;	// 페이지 번호에 맞게 다시 구현
 		col = b;
 		word = s;
@@ -138,6 +141,12 @@ public:
 			if (wordCount + 1 == col) {
 				break;
 			}
+		}
+
+
+		if (wordCount + 1 < col) {
+			consolMessage = "error: placement number input out of range";
+			throw 0;
 		}
 
 		temp.insert(i + 1, word + " ");
@@ -232,7 +241,7 @@ public:
 
 		for (int i = 0; i < lines.size(); i++) {
 			s = lines[i].buf;
-			
+
 			if (s.find(target) <= 75) {
 				searchedLine = i;
 				break;
@@ -275,7 +284,7 @@ public:
 		else {
 			start = 20 * (page - 1) + 1;
 		}
-		
+
 		int end = start + 19;
 
 		if (end > lines.size()) {
@@ -388,10 +397,24 @@ void string_data_handling(string command, vector<string>& splitedData) {
 
 	while (getline(ss, stringBuf, ',')) {
 		if (stringBuf.length() > MAXBYTE) {
+			consolMessage = "string parameter must be under 75 byte";
 			throw 0;
 		}
+		cout << stringBuf << endl;
+
+		for (int i = 0; i < stringBuf.length(); i++) {
+			if (stringBuf[i] == ' ') {
+				throw 0;
+			}
+		}
+
+		cout << ".." << stringBuf << ".." << endl;
+
 		splitedData.push_back(stringBuf);
+
 	}
+
+
 }
 
 void main() {
@@ -399,7 +422,7 @@ void main() {
 	string data;	// 사용자 입력값 데이터 추출용
 	string stringBuf;
 	vector<string> splitedData;
-	Term* t = new Term("test.txt");
+	Term* t = new Term("test_ansi.txt");
 	Action* next = new NextPage;
 	Action* prev = new PrevPage;
 	Insert* insert = new Insert;
@@ -415,64 +438,66 @@ void main() {
 		command = t->get_command();
 
 		consolMessage.clear();
+		try {
+			if (command.at(0) == 'n') {
+				t->setAction(next);
+				t->doAction();
+			}
+			else if (command.at(0) == 'p') {
+				t->setAction(prev);
+				t->doAction();
+			}
+			else if (command.at(0) == 'i') {
+				// insert 구현
 
-		if (command.at(0) == 'n') {
-			t->setAction(next);
-			t->doAction();
-			continue;
-		}
-		else if (command.at(0) == 'p') {
-			t->setAction(prev);
-			t->doAction();
-		}
-		else if (command.at(0) == 'i') {
-			// insert 구현
-			try {
 				string_data_handling(command, splitedData);
 				stringstream(splitedData[0]) >> a;
 				stringstream(splitedData[1]) >> b;
 				insert->i(a, b, splitedData[2]);
 				t->setAction(insert);
 				t->doAction();
-			}
-			catch (int b) {
-				consolMessage = "error";
-			}
-		}
-		else if (command.at(0) == 'd') {
-			// delete 구현
-			string_data_handling(command, splitedData);
-			stringstream(splitedData[0]) >> a;
-			stringstream(splitedData[1]) >> b;
-			del->d(a, b);
-			t->setAction(del);
-			t->doAction();
-		}
-		else if (command.at(0) == 's') {
-			// 텍스트 파일 처음부터 탐색, 첫번째 출력 창의 첫번째 라인에 위치하도록 출력
-			string_data_handling(command, splitedData);
-			search->s(splitedData[0]);
-			t->setAction(search);
-			t->doAction();
-		}
-		else if (command.at(0) == 'c') {
-			// 변경하고 싶은 단어 모두 다른 단어로 변경
-			string_data_handling(command, splitedData);
-			change->c(splitedData[0], splitedData[1]);
-			t->setAction(change);
-			t->doAction();
-		}
-		else if (!command.compare("t")) {
 
-			t->setAction(saveQuit);
-			t->doAction();
+			}
+			else if (command.at(0) == 'd') {
+				// delete 구현			
+				string_data_handling(command, splitedData);
+				stringstream(splitedData[0]) >> a;
+				stringstream(splitedData[1]) >> b;
+				del->d(a, b);
+				t->setAction(del);
+				t->doAction();
+			}
+			else if (command.at(0) == 's') {
+				// 텍스트 파일 처음부터 탐색, 첫번째 출력 창의 첫번째 라인에 위치하도록 출력
+				string_data_handling(command, splitedData);
+				search->s(splitedData[0]);
+				t->setAction(search);
+				t->doAction();
+			}
+			else if (command.at(0) == 'c') {
+				// 변경하고 싶은 단어 모두 다른 단어로 변경
+				string_data_handling(command, splitedData);
+				change->c(splitedData[0], splitedData[1]);
+				t->setAction(change);
+				t->doAction();
+			}
+			else if (!command.compare("t")) {
+
+				t->setAction(saveQuit);
+				t->doAction();
+			}
+			else {
+				consolMessage = "error: invalid command";
+			}
 		}
-		else {
-			consolMessage = "error: invalid command";
+		catch (...) {
+			if (consolMessage.empty()) {
+				consolMessage = "error: invalid input, check blank, invalid input type, etc...";
+			}
 		}
 		cout << "------------------------------------------------------------------------------------------" << endl;
 		Sleep(100);
-		system("cls");
 
+		system("cls");
 	} while (command.compare("t"));
 }
