@@ -96,7 +96,7 @@ public:
 class NextPage :public Action {
 public:
 	void doAction() override {
-		// 허용 페이지가 넘을때 ? 예외처리 필요 
+		// 허용 페이지가 넘을때 
 		if (lines.size() / 20 < pageNumber) {
 			consolMessage = "This is the last page!";
 			return;
@@ -119,32 +119,34 @@ public:
 
 class Insert : public Action {
 public:
-	void i(int a, int b, string s) {
+	Insert(int a, int b, string& s) : line((pageNumber - 1) * 20 + a), col(b), word(s) {
 		if (a > 20) {
 			consolMessage = "error: line out of range ( invalid line : 1<= line <= 20)";
 			throw 0;
 		}
-		line = (pageNumber - 1) * 20 + a;	// 페이지 번호에 맞게 다시 구현
-		col = b;
-		word = s;
 	}
+	~Insert() {};
+
 	void doAction() override {
 		string temp = lines[line].buf;
 		int wordCount = 0;
 		int i;
 
 		for (i = 0; i < temp.length(); i++) {
+			// 공백의 숫자를 통해 단어 개수 파악
+
 			if (temp.at(i) == ' ') {
 				++wordCount;
 			}
 
-			if (wordCount + 1 == col) {
+			if (wordCount + 1 == col) {		
+				// 원하는 위치 찾는 경우
 				break;
 			}
 		}
 
 
-		if (wordCount + 1 < col) {
+		if (wordCount + 1 < col || col < 1) {
 			consolMessage = "error: placement number input out of range";
 			throw 0;
 		}
@@ -152,7 +154,7 @@ public:
 		temp.insert(i + 1, word + " ");
 		strcpy(lines[line].buf, temp.c_str());
 
-		// 문장 삽입 후 75 바이트 크기를 넘기면 ? 
+		// 문장 삽입 후 75 바이트 크기를 넘을 수 있다.
 		reWrite();
 
 	}
@@ -163,16 +165,23 @@ public:
 
 class Delete : public Action {
 public:
-	void d(int a, int b) {
-		line = (pageNumber - 1) * 20 + a;	// 페이지에 맞는 번호로 다시 구현
-		col = b;
+
+	Delete(int a, int b) : line((pageNumber - 1) * 20 + a), col(b) {
+		if (a > 20) {
+			// 줄 범위 추가 
+			consolMessage = "error: line out of range ( invalid line : 1<= line <= 20)";
+			throw 0;
+		}
 	}
+	~Delete() {}
+
 	void doAction() override {
 		string deletedWord;
 		string temp = lines[line].buf;
 		int wordCount = 0;
 		int k;
 		for (k = 0; k < temp.length(); k++) {
+			// 공백으로 단어 위치 찾기 
 			if (temp.at(k) == ' ') {
 				++wordCount;
 			}
@@ -181,7 +190,14 @@ public:
 			}
 		}
 
-		for (int i = k + 1; lines[line].buf[i] != ' '; i++) {
+
+		if (wordCount + 1 < col || col < 1) {
+			consolMessage = "error: delete target number input out of range";
+			throw 0;
+		}
+
+		for (int i = k + 1; lines[line].buf[i] != ' ' || lines[line].buf[i] != '\0'; i++) {
+			// 단어 끝나기 전까지 삭제할 단어 정보 수집
 			deletedWord += lines[line].buf[i];
 		}
 
@@ -198,10 +214,8 @@ public:
 
 class Change : public Action {
 public:
-	void c(string oldWord_, string newWord_) {
-		oldWord = oldWord_;
-		newWord = newWord_;
-	}
+	Change(string oldWord_, string newWord_) : oldWord(oldWord_), newWord(newWord_) {}
+	~Change() {}
 
 	string replaceAll(string& str, const string& from, const string& to) {
 		size_t start_pos = 0; //string처음부터 검사
@@ -232,10 +246,10 @@ public:
 
 class Search : public Action {
 public:
-	void s(string s_) {
+	Search(string s_) {
 		target = s_;
 	}
-
+	~Search() {}
 	void doAction() {
 		string s;
 
@@ -256,7 +270,7 @@ public:
 class SaveQuit : public Action {
 public:
 	void doAction() {
-		ofstream write("result.txt");
+		ofstream write("test.txt");
 
 		for (int i = 0; i < lines.size(); i++) {
 			string temp = lines[i].buf;
@@ -351,6 +365,7 @@ public:
 		while (file >> word) {
 
 			if (!prev.empty()) {
+				// 이전 줄에서 75 바이트를 넘어선 단어에 대한 처리 
 				for (int i = 0; i < prev.length(); i++) {
 					buffer.buf[i] = prev.at(i);
 				}
@@ -362,7 +377,7 @@ public:
 			currentByte += word.length();
 
 			if (currentByte / MAXBYTE >= 1) {
-				prev = word;
+				prev = word;				// 75 BYTE를 넘기는 경우 다음 줄에 넘기기 위해 저장
 				currentByte = 1;
 				lines.push_back(buffer);
 				clear_buffer(buffer);
@@ -373,12 +388,13 @@ public:
 			int  j = 0;
 
 			for (int i = currentByte - word.length() - 1; i < currentByte - 1; i++) {
+				// 단어를 현재 줄에 저장
 				buffer.buf[i] = word.at(j);
 				j++;
 			}
 			word.clear();
 		}
-		lines.push_back(buffer);
+		lines.push_back(buffer);	// 마지막 줄에 대한 처리 
 		file.close();
 	}
 
@@ -400,15 +416,12 @@ void string_data_handling(string command, vector<string>& splitedData) {
 			consolMessage = "string parameter must be under 75 byte";
 			throw 0;
 		}
-		cout << stringBuf << endl;
-
+	
 		for (int i = 0; i < stringBuf.length(); i++) {
 			if (stringBuf[i] == ' ') {
 				throw 0;
 			}
 		}
-
-		cout << ".." << stringBuf << ".." << endl;
 
 		splitedData.push_back(stringBuf);
 
@@ -424,11 +437,7 @@ void main() {
 	vector<string> splitedData;
 	Term* t = new Term("test_ansi.txt");
 	Action* next = new NextPage;
-	Action* prev = new PrevPage;
-	Insert* insert = new Insert;
-	Delete* del = new Delete;
-	Search* search = new Search;
-	Change* change = new Change;
+	Action* prev = new PrevPage;;
 	Action* saveQuit = new SaveQuit;
 	int a, b;
 
@@ -453,9 +462,13 @@ void main() {
 				string_data_handling(command, splitedData);
 				stringstream(splitedData[0]) >> a;
 				stringstream(splitedData[1]) >> b;
-				insert->i(a, b, splitedData[2]);
+
+				Insert* insert = new Insert(a, b, splitedData[2]);
+				
 				t->setAction(insert);
 				t->doAction();
+
+				delete(insert);
 
 			}
 			else if (command.at(0) == 'd') {
@@ -463,23 +476,31 @@ void main() {
 				string_data_handling(command, splitedData);
 				stringstream(splitedData[0]) >> a;
 				stringstream(splitedData[1]) >> b;
-				del->d(a, b);
+
+				Delete* del = new Delete(a, b);
+			
 				t->setAction(del);
 				t->doAction();
+
+				delete del;
 			}
 			else if (command.at(0) == 's') {
 				// 텍스트 파일 처음부터 탐색, 첫번째 출력 창의 첫번째 라인에 위치하도록 출력
 				string_data_handling(command, splitedData);
-				search->s(splitedData[0]);
+				Search* search = new Search(splitedData[0]);
 				t->setAction(search);
 				t->doAction();
+
+				delete search;
 			}
 			else if (command.at(0) == 'c') {
 				// 변경하고 싶은 단어 모두 다른 단어로 변경
 				string_data_handling(command, splitedData);
-				change->c(splitedData[0], splitedData[1]);
+
+				Change* change = new Change(splitedData[0], splitedData[1]);
 				t->setAction(change);
 				t->doAction();
+				delete(change);
 			}
 			else if (!command.compare("t")) {
 
@@ -500,4 +521,8 @@ void main() {
 
 		system("cls");
 	} while (command.compare("t"));
+
+	delete next;
+	delete prev;
+	delete saveQuit;
 }
