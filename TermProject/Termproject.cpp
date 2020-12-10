@@ -196,7 +196,7 @@ public:
 			throw 0;
 		}
 
-		for (int i = k + 1; lines[line].buf[i] != ' ' || lines[line].buf[i] != '\0'; i++) {
+		for (int i = k + 1; lines[line].buf[i] != ' '; i++) {
 			// 단어 끝나기 전까지 삭제할 단어 정보 수집
 			deletedWord += lines[line].buf[i];
 		}
@@ -217,16 +217,6 @@ public:
 	Change(string oldWord_, string newWord_) : oldWord(oldWord_), newWord(newWord_) {}
 	~Change() {}
 
-	string replaceAll(string& str, const string& from, const string& to) {
-		size_t start_pos = 0; //string처음부터 검사
-		while ((start_pos = str.find(from, start_pos)) != string::npos)  //from을 찾을 수 없을 때까지
-		{
-			str.replace(start_pos, from.length(), to);
-			start_pos += to.length(); // 중복검사를 피하고 from.length() > to.length()인 경우를 위해서
-		}
-		return str;
-	}
-
 	void doAction() {
 		int lineStart = (pageNumber - 1) * 20 + 1;
 		int lineEnd = lineStart + 19;
@@ -240,6 +230,17 @@ public:
 
 		reWrite();
 	}
+private:
+	string replaceAll(string& str, const string& from, const string& to) {
+		size_t start_pos = 0; //string처음부터 검사
+		while ((start_pos = str.find(from, start_pos)) != string::npos)  //from을 찾을 수 없을 때까지
+		{
+			str.replace(start_pos, from.length(), to);
+			start_pos += to.length(); // 중복검사를 피하고 from.length() > to.length()인 경우를 위해서
+		}
+		return str;
+	}
+
 public:
 	string oldWord, newWord;
 };
@@ -435,7 +436,7 @@ void main() {
 	string data;	// 사용자 입력값 데이터 추출용
 	string stringBuf;
 	vector<string> splitedData;
-	Term* t = new Term("test_ansi.txt");
+	Term* t = new Term("test.txt");
 	Action* next = new NextPage;
 	Action* prev = new PrevPage;;
 	Action* saveQuit = new SaveQuit;
